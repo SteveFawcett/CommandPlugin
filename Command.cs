@@ -58,9 +58,10 @@ namespace Command
 
             if ( Master == null )
             {
-                _logger?.LogWarning("No master cache defined, cannot get open jobs.");
                 return;
             }
+
+            processor.SetMaster( Master);
 
             foreach ( var job in Master.CommandReader(BroadcastPluginSDK.Classes.CommandStatus.New) )
             {
@@ -68,25 +69,11 @@ namespace Command
 
                 UpdateJobStatus(job , CommandStatus.Queued );
 
-                processor.EnqueueJob(() =>
-                {
-                    UpdateJobStatus(job, CommandStatus.InProgress);
-                    bool success = ExecuteJob(job);
-                    UpdateJobStatus(job, success ? CommandStatus.Completed : CommandStatus.Failed);
-                    return Task.CompletedTask;
-                });
+                processor.EnqueueJob(job);
+
             }
 
             ImageChangedInvoke(Resources.red);
-        }
-
-        private bool ExecuteJob(CommandItem job )
-        {
-            // Execute the command here
-            // This is a placeholder for actual command execution logic
-            _logger?.LogInformation("Executing job {job}", job.Id);
-
-            return true;
         }
 
         private void UpdateJobStatus(CommandItem job , CommandStatus newStatus )

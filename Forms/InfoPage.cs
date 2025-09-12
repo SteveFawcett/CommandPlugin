@@ -22,12 +22,12 @@ namespace CommandPlugin.Forms
             {
                 if (value != null)
                 {
-                    pictureBox1.Image = value;
+                    LogoPictureBox.Image = value;
                 }
             }
             get
             {
-                return pictureBox1.Image;
+                return LogoPictureBox.Image;
             }
         }
 
@@ -50,9 +50,9 @@ namespace CommandPlugin.Forms
 
         internal void JobCard(CommandItem job)
         {
-            foreach(var ljob in allJobs)
+            foreach (var ljob in allJobs)
             {
-                if(ljob.Id == job.Id)
+                if (ljob.Id == job.Id)
                 {
                     ljob.Status = job.Status;
                     ApplyJobFilter();
@@ -64,7 +64,7 @@ namespace CommandPlugin.Forms
             ApplyJobFilter();
         }
 
-        private bool ShouldHide( CommandItem item)
+        private bool ShouldHide(CommandItem item)
         {
             bool shouldHide = jobTypes.Text switch
             {
@@ -113,6 +113,20 @@ namespace CommandPlugin.Forms
         private void jobTypes_SelectedIndexChanged(object sender, EventArgs e)
         {
             ApplyJobFilter();
+        }
+
+        private void display_results(object sender, EventArgs e)
+        {
+            if (JobListBox.SelectedItem is CommandItem item)
+            {
+                StderrTextBox.Text = item.Errors;
+                StdioTextBox.Text = item.Result;
+            }
+            else
+            {
+                StdioTextBox.Text = string.Empty;
+                StderrTextBox.Text = string.Empty;
+            }
         }
     }
 }

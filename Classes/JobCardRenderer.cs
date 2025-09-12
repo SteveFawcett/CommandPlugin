@@ -47,36 +47,23 @@ namespace CommandPlugin.Classes
 
             g.DrawString(item.Name, _repoFont, _repoTextBrush, textX, textY);
             g.DrawString(item.Description, _metaFont, _metaTextBrush, textX, textY + LineHeight);
-
-           // if (!string.IsNullOrEmpty(item.Installed))
-           // {
-           //     g.DrawString($"Installed: {item.Installed}", _metaFont, _metaTextBrush, textX, textY + 2 * LineHeight);
-           // }
+            g.DrawString(item.Id, _metaFont, _metaTextBrush, textX, textY + ( LineHeight *2 ));
 
             // Badge layout
             int badgeX = cardRect.Right - Padding;
             int badgeY = cardRect.Y + Padding + 20;
 
-            if (item.Status == CommandStatus.Queued )
+            var (label, backColor) = item.Status switch
             {
-                DrawBadge(g, ref badgeY, badgeX, "Queued", Color.ForestGreen, Color.White);
-            }
-            if (item.Status == CommandStatus.InProgress)
-            {
-                DrawBadge(g, ref badgeY, badgeX, "Running", Color.Orange, Color.White);
-            }
-            if (item.Status == CommandStatus.Completed)
-            {
-                DrawBadge(g, ref badgeY, badgeX, "Completed", Color.ForestGreen, Color.White);
-            }
-            if (item.Status == CommandStatus.New)
-            {
-                DrawBadge(g, ref badgeY, badgeX, "Completed", Color.ForestGreen, Color.White);
-            }
-            if (item.Status == CommandStatus.Failed)
-            {
-                DrawBadge(g, ref badgeY, badgeX, "Failed", Color.Red, Color.White);
-            }
+                CommandStatus.New => ("New", Color.Gray),
+                CommandStatus.Queued => ("Queued", Color.ForestGreen),
+                CommandStatus.InProgress => ("Running", Color.Orange),
+                CommandStatus.Completed => ("Completed", Color.ForestGreen),
+                CommandStatus.Failed => ("Failed", Color.Red),
+                _ => ("Unknown", Color.DarkGray)
+            };
+
+            DrawBadge(g, ref badgeY, badgeX, label, backColor, Color.White);
         }
 
         private void DrawBadge(Graphics g, ref int badgeY, int badgeRightX, string text, Color bgColor, Color fgColor)
