@@ -1,0 +1,116 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	  <TargetFramework>net8.0-windows8.0</TargetFramework>
+	  <Nullable>enable</Nullable>
+	  <UseWindowsForms>true</UseWindowsForms>
+
+	  <PlatformTarget>x64</PlatformTarget>
+	  <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+	  <Prefer32Bit>false</Prefer32Bit>
+
+	  <ImplicitUsings>enable</ImplicitUsings>
+	  <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
+	  <Platforms>x64</Platforms>
+
+	  <OutputDirectory>$(AppData)\Broadcast\Plugins\</OutputDirectory>
+	  <PackageDir Condition="'$(PackageDir)' == ''">$([System.IO.Path]::Combine($(OutputDirectory),''))/</PackageDir>
+	  <PackageFileName>$(AssemblyName)-v$(AssemblyVersion).zip</PackageFileName>
+	  <PackagePath>$(PackageDir)\$(PackageFileName)</PackagePath>
+	  <RemotePath>Z:\Plugins</RemotePath>
+	    <AssemblyVersion>0.0.1</AssemblyVersion>
+		<RepositoryType>git</RepositoryType>
+		<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+		<Copyright>Copyright © 2025 Steven Fawcett, All Rights Reserved</Copyright>
+		<PackageTags>simulator;broadcast</PackageTags>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageIcon>airplane.png</PackageIcon>
+	    <PackageProjectUrl>https://github.com/SteveFawcett/TestPlugin</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/SteveFawcett/TestPlugin</RepositoryUrl>
+  </PropertyGroup>
+
+	<Target Name="AutoPackage" AfterTargets="Publish">
+		<Message Importance="High" Text="📦 Packaging plugin to $(PackagePath)" />
+		<MakeDir Directories="$(PackageDir)" />
+
+		<ItemGroup>
+			<ZipFilesToDelete Include="$(MSBuildProjectDirectory)/$(PublishDir)**\*.zip" />
+		</ItemGroup>
+		<Message Importance="High" Text="📦 Remove any old zip files " />
+		<Delete Files="@(ZipFilesToDelete)" />
+
+		<ZipDirectory Overwrite="true" SourceDirectory="$(MSBuildProjectDirectory)/$(PublishDir)" DestinationFile="$(PackagePath)" />
+
+		<Message Importance="High" Text="📦 Copying package from $(PackagePath) To $(MSBuildProjectDirectory)/$(PublishDir) " />
+		<Copy SourceFiles="$(PackagePath)" DestinationFolder="$(MSBuildProjectDirectory)/$(PublishDir)" />
+
+		<Copy SourceFiles="$(PackagePath)" DestinationFolder="$(AppData)/Broadcast/Plugins" Condition="'$(Configuration)' == 'Debug'" />
+		<Message Importance="High" Text="📦 Copying package $(AppData)/Broadcast/Plugins" Condition="'$(Configuration)' == 'Debug'" />
+
+		<ItemGroup>
+			<DynamicContent Include="$(PackagePath)">
+				<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+				<CopyToPublishDirectory>Always</CopyToPublishDirectory>
+			</DynamicContent>
+		</ItemGroup>
+	</Target>
+
+	<Target Name="Deliver" AfterTargets="Publish">
+		<Message Importance="High" Text="📦 Copying to remote [$(RemotePath)] " />
+		<Copy SourceFiles="$(PackagePath)" DestinationFolder="$(RemotePath)" />
+	</Target>
+
+	<ItemGroup>
+	  <Compile Remove=".github\**" />
+	  <EmbeddedResource Remove=".github\**" />
+	  <None Remove=".github\**" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(Configuration)' == 'Debug'">
+		<ProjectReference Include="..\BroadcastPluginSDK\BroadcastPluginSDK.csproj" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(Configuration)' == 'Release'">
+		<PackageReference Include="BroadcastPluginSDK" Version="1.1.1" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.8" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Compile Update="Properties\Resources.Designer.cs">
+	    <DesignTime>True</DesignTime>
+	    <AutoGen>True</AutoGen>
+	    <DependentUpon>Resources.resx</DependentUpon>
+	  </Compile>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <EmbeddedResource Update="Properties\Resources.resx">
+	    <Generator>ResXFileCodeGenerator</Generator>
+	    <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+	  </EmbeddedResource>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Update="LICENSE.txt">
+	    <PackagePath>\</PackagePath>
+	    <Pack>True</Pack>
+	  </None>
+	  <None Update="README.md">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
+	  <None Update="Resources\airplane.png">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
+	</ItemGroup>
+
+	<Target Name="Deliver" AfterTargets="Publish">
+		<Message Importance="High" Text="📦 Copying to remote [$(RemotePath)] " />
+		<Copy SourceFiles="$(PackagePath)" DestinationFolder="$(RemotePath)" />
+	</Target>
+
+</Project>
