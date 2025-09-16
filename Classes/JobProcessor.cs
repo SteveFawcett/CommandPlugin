@@ -1,15 +1,18 @@
-﻿using BroadcastPluginSDK.Classes;
+﻿using Accessibility;
+using BroadcastPluginSDK.Classes;
 using BroadcastPluginSDK.Interfaces;
+using Command.Forms;
 using System.Diagnostics;
 using System.Threading.Channels;
 
-namespace CommandPlugin.Classes
+namespace Command.Classes
 {
     public class JobProcessor
     {
         private readonly Channel<CommandItem> _channel;
         private readonly CancellationTokenSource _cts = new();
         private ICache? _Master;
+        private InfoPage? _infoPage;
 
         public JobProcessor()
         {
@@ -59,32 +62,57 @@ namespace CommandPlugin.Classes
 
         private async Task ProcessQueueAsync()
         {
+            var semaphore = new SemaphoreSlim(1); // Limit concurrent jobs
+
             await foreach (var job in _channel.Reader.ReadAllAsync(_cts.Token))
             {
-                try
+                await semaphore.WaitAsync();
+
+                _ = Task.Run(async () =>
                 {
-                    job.Status = CommandStatus.InProgress;
-                    _Master?.CommandWriter(job);
-                    var output = await RunCommandAsync( job.Command, "" );
-                    job.Result = output["STDIO"];
-                    job.Errors = output["STDERR"];
-                    job.Status = CommandStatus.Completed;
-                    _Master?.CommandWriter(job);
-                }
-                catch (Exception ex)
-                {
-                    job.Status = CommandStatus.Failed;
-                    _Master?.CommandWriter(job);
-                    Debug.WriteLine($"Job failed: {ex.Message}");
-                }
+                    try
+                    {
+                        job.Status = CommandStatus.InProgress;
+                        _Master?.CommandWriter(job);
+
+                        var item = CommandList.GetCommandDetails(job.Command);
+                        var output = await RunCommandAsync(item.Value, "");
+
+                        job.Result = output["STDIO"];
+                        job.Errors = output["STDERR"];
+
+                        job.Status = string.IsNullOrEmpty(job.Errors)
+                            ? CommandStatus.Completed
+                            : CommandStatus.Failed;
+
+                        _Master?.CommandWriter(job);
+                    }
+                    catch (Exception ex)
+                    {
+                        job.Status = CommandStatus.Failed;
+                        _Master?.CommandWriter(job);
+                        Debug.WriteLine($"Job failed: {ex.Message}");
+                    }
+                    finally
+                    {
+                        _infoPage?.RefreshJobs();
+                        semaphore.Release();
+                    }
+                });
             }
         }
+
 
         public void Stop() => _cts.Cancel();
 
         internal void SetMaster(ICache master)
         {
             _Master = master;
+        }
+
+        internal void SetPage(InfoPage? infoPage)
+        {
+            _infoPage = infoPage;
         }
     }
 

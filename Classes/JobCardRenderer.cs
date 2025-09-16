@@ -1,11 +1,13 @@
 ﻿using BroadcastPluginSDK.Classes;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.ListView;
 
-namespace CommandPlugin.Classes
+namespace Command.Classes
 {
     public class JobCardRenderer
     {
+
         // Fonts
         private readonly Font _repoFont = new("Segoe UI", 10, FontStyle.Bold);
         private readonly Font _metaFont = new("Segoe UI", 8, FontStyle.Regular);
@@ -15,6 +17,7 @@ namespace CommandPlugin.Classes
         private readonly Pen _borderPen = new(Color.LightGray);
         private readonly Brush _highlightBrush = new SolidBrush(Color.LightSteelBlue);
         private readonly Brush _repoTextBrush = new SolidBrush(Color.Black);
+        private readonly Brush _errorTextBrush = new SolidBrush(Color.Red);
         private readonly Brush _metaTextBrush = new SolidBrush(Color.Gray);
 
         // Layout constants
@@ -45,8 +48,15 @@ namespace CommandPlugin.Classes
             int textX = cardRect.X + Padding;
             int textY = cardRect.Y + Padding;
 
-            g.DrawString(item.Name, _repoFont, _repoTextBrush, textX, textY);
-            g.DrawString(item.Description, _metaFont, _metaTextBrush, textX, textY + LineHeight);
+            try {
+                var details = CommandList.GetCommandDetails(item.Command);
+                g.DrawString(details.Key, _repoFont, _repoTextBrush, textX, textY);
+                g.DrawString(details.Description, _metaFont, _metaTextBrush, textX, textY + LineHeight);
+            }
+            catch {
+                g.DrawString(item.Command, _repoFont, _repoTextBrush, textX, textY);
+                g.DrawString("Invalid Value", _metaFont, _errorTextBrush, textX, textY + LineHeight);
+            }
             g.DrawString(item.Id, _metaFont, _metaTextBrush, textX, textY + ( LineHeight *2 ));
 
             // Badge layout
@@ -63,10 +73,23 @@ namespace CommandPlugin.Classes
                 _ => ("Unknown", Color.DarkGray)
             };
 
-            DrawBadge(g, ref badgeY, badgeX, label, backColor, Color.White);
+
+            DrawBadge(g, badgeY, ref badgeX, label, backColor, Color.White);
+            
+            if(!string.IsNullOrEmpty(item.Errors))
+            {
+                var rect = DrawBadge(g, badgeY, ref badgeX, "Errors", Color.Red, Color.White);
+                item.clickableBadges.Add((rect, "Errors"));
+            }
+
+            if (!string.IsNullOrEmpty(item.Result))
+            {
+               var rect = DrawBadge(g, badgeY, ref badgeX, "Results", Color.Blue, Color.White);
+               item.clickableBadges.Add((rect, "Results"));
+            }
         }
 
-        private void DrawBadge(Graphics g, ref int badgeY, int badgeRightX, string text, Color bgColor, Color fgColor)
+        private Rectangle DrawBadge(Graphics g, int badgeY, ref int badgeRightX, string text, Color bgColor, Color fgColor)
         {
             var textSize = g.MeasureString(text, _metaFont);
             int badgeWidth = (int)textSize.Width + 20;
@@ -82,7 +105,10 @@ namespace CommandPlugin.Classes
 
             g.DrawString(text, _metaFont, new SolidBrush(fgColor), textX, textY);
 
-            badgeY += BadgeHeight + 6; // Move down for next badge
+            // badgeY += BadgeHeight + 6; // Move down for next badge;
+            badgeRightX -= ( badgeWidth + 6 ); // Move left for next badge
+
+            return badgeRect;
         }
 
         private GraphicsPath CreateRoundedRect(Rectangle rect, int radius)

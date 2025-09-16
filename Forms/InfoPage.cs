@@ -1,17 +1,17 @@
 ﻿using BroadcastPluginSDK.Classes;
 using BroadcastPluginSDK.Interfaces;
-using CommandPlugin.Classes;
+using Command.Classes;
 using CommandPlugin.Properties;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Windows.Forms;
 
-namespace CommandPlugin.Forms 
+namespace Command.Forms 
 {
     public partial class InfoPage : UserControl, IInfoPage
     {
         private readonly JobCardRenderer _renderer = new();
-        private readonly ILogger<IPlugin> _logger;
+        private readonly ILogger<Command> _logger;
         private readonly IConfiguration _configuration;
         private readonly JobProcessor _processor;
         private List<CommandItem> allJobs = new();
@@ -31,7 +31,7 @@ namespace CommandPlugin.Forms
             }
         }
 
-        public InfoPage(IConfiguration configuration, ILogger<IPlugin> logger, JobProcessor processor)
+        public InfoPage(IConfiguration configuration, ILogger<Command> logger, JobProcessor processor)
         {
             _logger = logger;
             _configuration = configuration;
@@ -49,7 +49,7 @@ namespace CommandPlugin.Forms
         }
 
         internal void JobCard(CommandItem job)
-        {
+        { 
             foreach (var ljob in allJobs)
             {
                 if (ljob.Id == job.Id)
@@ -94,6 +94,7 @@ namespace CommandPlugin.Forms
                     JobListBox.Items.Add(item);
             }
 
+            JobListBox.Refresh();
             JobListBox.EndUpdate();
         }
 
@@ -109,23 +110,53 @@ namespace CommandPlugin.Forms
 
             e.DrawFocusRectangle();
         }
-
+        
         private void jobTypes_SelectedIndexChanged(object sender, EventArgs e)
         {
             ApplyJobFilter();
         }
 
-        private void display_results(object sender, EventArgs e)
+        internal void RefreshJobs()
         {
-            if (JobListBox.SelectedItem is CommandItem item)
+            ApplyJobFilter();
+        }
+
+        private void panel_MouseClick(object sender, MouseEventArgs e)
+        {
+            int index = JobListBox.IndexFromPoint(e.Location);
+
+            if (index != ListBox.NoMatches)
             {
-                StderrTextBox.Text = item.Errors;
-                StdioTextBox.Text = item.Result;
+                if (JobListBox.Items[index] is CommandItem item)
+                {
+                    foreach (var badge in item.clickableBadges)
+                    {
+                        if (badge.bounds.Contains(e.Location))
+                        {
+                            HandleBadgeClick(badge.label, item);
+                            break;
+                        }
+                    }
+                }
             }
-            else
+        }
+
+        private void HandleBadgeClick(string label , CommandItem item )
+        {
+            Results f = new Results();
+            _logger.LogInformation("Badge {Label} clicked for Job {JobId}", label, item.Id);
+
+            if ( label == "Errors" && !string.IsNullOrEmpty(item.Errors))
             {
-                StdioTextBox.Text = string.Empty;
-                StderrTextBox.Text = string.Empty;
+                f.SetText = item.Errors;
+                f.Text = $"Errors for Job {item.Id}";
+                f.ShowDialog();
+            }
+            else if(label == "Results" && !string.IsNullOrEmpty(item.Result))
+            {
+                f.SetText = item.Result;
+                f.Text = $"Result for Job {item.Id}";
+                f.ShowDialog();
             }
         }
     }
