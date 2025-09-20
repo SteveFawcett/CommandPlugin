@@ -10,11 +10,9 @@ namespace Command.Forms
 {
     public partial class InfoPage : UserControl, IInfoPage
     {
-        private readonly JobCardRenderer _renderer = new();
         private readonly ILogger<Command> _logger;
         private readonly IConfiguration _configuration;
         private readonly JobProcessor _processor;
-        private List<CommandItem> allJobs = new();
 
         public Image Icon
         {
@@ -39,6 +37,14 @@ namespace Command.Forms
 
             InitializeComponent();
 
+            // Some test data
+            JobListBox.AddUpdateItem(new CommandItem { Key = "Sample Job 1", Value = "dir", Status = CommandStatus.Queued });
+            JobListBox.AddUpdateItem(new CommandItem { Key = "Sample Job 2", Value = "dir", Status = CommandStatus.New });
+            JobListBox.AddUpdateItem(new CommandItem { Key = "Sample Job 3", Value = "dir", Status = CommandStatus.New });
+            JobListBox.AddUpdateItem(new CommandItem { Key = "Sample Job 4", Value = "dir", Status = CommandStatus.Completed });
+            JobListBox.AddUpdateItem(new CommandItem { Key = "Sample Job 5", Value = "dir", Status = CommandStatus.Failed });
+            JobListBox.AddUpdateItem(new CommandItem { Key = "Sample Job 6", Value = "dir", Status = CommandStatus.Completed });
+
             Icon = Resources.red;
             jobTypes.SelectedIndex = 1;
         }
@@ -46,22 +52,6 @@ namespace Command.Forms
         public Control GetControl()
         {
             return this;
-        }
-
-        internal void JobCard(CommandItem job)
-        { 
-            foreach (var ljob in allJobs)
-            {
-                if (ljob.Id == job.Id)
-                {
-                    ljob.Status = job.Status;
-                    ApplyJobFilter();
-                    return;
-                }
-            }
-
-            allJobs.Add(job);
-            ApplyJobFilter();
         }
 
         private bool ShouldHide(CommandItem item)
@@ -85,32 +75,10 @@ namespace Command.Forms
                 return;
             }
 
-            JobListBox.BeginUpdate();
-            JobListBox.Items.Clear();
+            JobListBox.FilterItems( item => !ShouldHide(item) );
 
-            foreach (var item in allJobs) // allJobs is your full source list
-            {
-                if (!ShouldHide(item))
-                    JobListBox.Items.Add(item);
-            }
-
-            JobListBox.Refresh();
-            JobListBox.EndUpdate();
         }
-
-        private void JobListBox_DrawItem(object? sender, DrawItemEventArgs e)
-        {
-            if (e.Index < 0 || e.Index >= JobListBox.Items.Count) return;
-
-            var item = (CommandItem)JobListBox.Items[e.Index];
-            if (item != null)
-            {
-                _renderer.Draw(e.Graphics, e.Bounds, item, (e.State & DrawItemState.Selected) != 0);
-            }
-
-            e.DrawFocusRectangle();
-        }
-        
+   
         private void jobTypes_SelectedIndexChanged(object sender, EventArgs e)
         {
             ApplyJobFilter();
@@ -119,45 +87,6 @@ namespace Command.Forms
         internal void RefreshJobs()
         {
             ApplyJobFilter();
-        }
-
-        private void panel_MouseClick(object sender, MouseEventArgs e)
-        {
-            int index = JobListBox.IndexFromPoint(e.Location);
-
-            if (index != ListBox.NoMatches)
-            {
-                if (JobListBox.Items[index] is CommandItem item)
-                {
-                    foreach (var badge in item.clickableBadges)
-                    {
-                        if (badge.bounds.Contains(e.Location))
-                        {
-                            HandleBadgeClick(badge.label, item);
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        private void HandleBadgeClick(string label , CommandItem item )
-        {
-            Results f = new Results();
-            _logger.LogInformation("Badge {Label} clicked for Job {JobId}", label, item.Id);
-
-            if ( label == "Errors" && !string.IsNullOrEmpty(item.Errors))
-            {
-                f.SetText = item.Errors;
-                f.Text = $"Errors for Job {item.Id}";
-                f.ShowDialog();
-            }
-            else if(label == "Results" && !string.IsNullOrEmpty(item.Result))
-            {
-                f.SetText = item.Result;
-                f.Text = $"Result for Job {item.Id}";
-                f.ShowDialog();
-            }
         }
     }
 }

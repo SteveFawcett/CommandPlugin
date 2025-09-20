@@ -1,4 +1,7 @@
 ﻿using System.Windows.Forms;
+using CyberDog.Controls;
+using BroadcastPluginSDK.Classes;
+using Command.Classes;
 
 namespace Command.Forms
 {
@@ -32,7 +35,7 @@ namespace Command.Forms
         {
             LogoPictureBox = new PictureBox();
             TitleLabel = new Label();
-            JobListBox = new ListBox();
+            JobListBox = new ListPanel<CommandItem>();
             jobTypes = new ComboBox();
             ((System.ComponentModel.ISupportInitialize)LogoPictureBox).BeginInit();
             SuspendLayout();
@@ -59,18 +62,11 @@ namespace Command.Forms
             // JobListBox
             // 
             JobListBox.BackColor = Color.White;
-            JobListBox.BorderStyle = BorderStyle.None;
-            JobListBox.DrawMode = DrawMode.OwnerDrawFixed;
-            JobListBox.Font = new Font("Segoe UI", 12F);
-            JobListBox.FormattingEnabled = true;
-            JobListBox.ItemHeight = 72;
             JobListBox.Location = new Point(18, 147);
             JobListBox.Margin = new Padding(0);
             JobListBox.Name = "JobListBox";
             JobListBox.Size = new Size(793, 288);
             JobListBox.TabIndex = 2;
-            JobListBox.MouseClick += panel_MouseClick;
-            JobListBox.DrawItem += JobListBox_DrawItem;
             // 
             // jobTypes
             // 
@@ -102,7 +98,7 @@ namespace Command.Forms
 
         private PictureBox LogoPictureBox;
         private Label TitleLabel;
-        private ListBox JobListBox;
+        private ListPanel<CommandItem> JobListBox;
         private ComboBox jobTypes;
     }
 }

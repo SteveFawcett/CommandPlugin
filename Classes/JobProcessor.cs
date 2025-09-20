@@ -75,11 +75,11 @@ namespace Command.Classes
                         job.Status = CommandStatus.InProgress;
                         _Master?.CommandWriter(job);
 
-                        var item = CommandList.GetCommandDetails(job.Command);
-                        var output = await RunCommandAsync(item.Value, "");
+                        //var item = CommandList.GetCommandDetails(job.Command);
+                        //var output = await RunCommandAsync(item.Value, "");
 
-                        job.Result = output["STDIO"];
-                        job.Errors = output["STDERR"];
+                        job.Result = "results"; // output["STDIO"];
+                        job.Errors = "errors"; // output["STDERR"];
 
                         job.Status = string.IsNullOrEmpty(job.Errors)
                             ? CommandStatus.Completed

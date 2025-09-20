@@ -17,7 +17,6 @@ namespace Command
         private readonly IPluginRegistry? _registry;
         private static InfoPage? _infoPage;
         private readonly static JobProcessor processor = new JobProcessor();
-        private readonly  CommandList? _commandList;
         public ICache? Master;
         public Command() : base() { }
 
@@ -28,7 +27,6 @@ namespace Command
             _registry = registry;
             _configuration = configuration.GetSection(STANZA) ;
             double sampleRate = _configuration?.GetValue<int?>("SampleRate") ?? 10000;
-            _commandList = new( logger , _configuration);
 
             var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(sampleRate));
                 _ = Task.Run(async () =>
@@ -69,25 +67,11 @@ namespace Command
             {
                 ImageChangedInvoke(Resources.green ); 
 
-                UpdateJobStatus(job , CommandStatus.Queued );
-
                 processor.EnqueueJob(job);
 
             }
 
             ImageChangedInvoke(Resources.red);
-        }
-
-        private void UpdateJobStatus(CommandItem job , CommandStatus newStatus )
-        {
-            job.Status = newStatus;
-
-            if (_infoPage != null)
-            {
-                _infoPage.JobCard(job);
-            }
-
-            Master?.CommandWriter(job);
         }
     }
 }
