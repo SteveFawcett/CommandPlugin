@@ -38,7 +38,7 @@
             OutputText.Location = new Point(7, 5);
             OutputText.Name = "OutputText";
             OutputText.ReadOnly = true;
-            OutputText.Size = new Size(790, 389);
+            OutputText.Size = new Size(790, 397);
             OutputText.TabIndex = 0;
             OutputText.Text = "";
             // 

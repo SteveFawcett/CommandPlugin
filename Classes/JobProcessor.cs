@@ -34,6 +34,8 @@ namespace Command.Classes
         public async Task<Dictionary<string,string>> RunCommandAsync(string command, string arguments)
         { 
             string switches = "/c";
+            string output = string.Empty;
+            string error = string.Empty;
 
             var psi = new ProcessStartInfo
             {
@@ -45,13 +47,21 @@ namespace Command.Classes
                 CreateNoWindow = true
             };
 
-            using var process = new Process { StartInfo = psi };
-            process.Start();
+            try
+            {
+                using var process = new Process { StartInfo = psi };
+                process.Start();
 
-            string output = await process.StandardOutput.ReadToEndAsync();
-            string error = await process.StandardError.ReadToEndAsync();
+                output = await process.StandardOutput.ReadToEndAsync();
+                error = await process.StandardError.ReadToEndAsync();
 
-            await process.WaitForExitAsync();
+                await process.WaitForExitAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error running command: {ex.Message}");
+                error = ex.Message;
+            }
 
             return new Dictionary<string, string>
             {
@@ -68,45 +78,54 @@ namespace Command.Classes
             {
                 await semaphore.WaitAsync();
 
-                _ = Task.Run(async () =>
+                Debug.WriteLine( $"[ProcessQueueAsync] : Running job: {job.Value} , Command: {job.FullComand}" );  
+
+                try
                 {
-                    try
-                    {
-                        job.Status = CommandStatus.InProgress;
-                        _Master?.CommandWriter(job);
-
-                        //var item = CommandList.GetCommandDetails(job.Command);
-                        //var output = await RunCommandAsync(item.Value, "");
-
-                        job.Result = "results"; // output["STDIO"];
-                        job.Errors = "errors"; // output["STDERR"];
-
-                        job.Status = string.IsNullOrEmpty(job.Errors)
-                            ? CommandStatus.Completed
-                            : CommandStatus.Failed;
-
-                        _Master?.CommandWriter(job);
-                    }
-                    catch (Exception ex)
+                    if( string.IsNullOrEmpty( job.FullComand ) )
                     {
                         job.Status = CommandStatus.Failed;
+                        job.Errors = "No command specified.";
                         _Master?.CommandWriter(job);
-                        Debug.WriteLine($"Job failed: {ex.Message}");
-                    }
-                    finally
-                    {
                         _infoPage?.RefreshJobs();
                         semaphore.Release();
+                        continue;
                     }
-                });
+
+                    job.Status = CommandStatus.InProgress;
+                    _Master?.CommandWriter(job);
+
+                    var output = await RunCommandAsync( job.FullComand  , "");
+
+                    job.Result =  output["STDIO"];
+                    job.Errors =  output["STDERR"];
+
+                    job.Status = string.IsNullOrEmpty(job.Errors)
+                        ? CommandStatus.Completed
+                        : CommandStatus.Failed;
+
+                    _Master?.CommandWriter(job);
+                }
+                catch (Exception ex)
+                {
+                    job.Status = CommandStatus.Failed;
+                    _Master?.CommandWriter(job);
+                    Debug.WriteLine($"Job failed: {ex.Message}");
+                }
+                finally
+                {
+                    _infoPage?.RefreshJobs();
+                    semaphore.Release();
+                }
             }
         }
-
 
         public void Stop() => _cts.Cancel();
 
         internal void SetMaster(ICache master)
         {
+            Debug.WriteLine($"[SetMaster] Setting master cache : {master.ToString()}");
+
             _Master = master;
         }
 

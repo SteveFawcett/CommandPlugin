@@ -1,7 +1,6 @@
-﻿using System.Windows.Forms;
+﻿using BroadcastPluginSDK.Classes;
+using Command.Renderers;
 using CyberDog.Controls;
-using BroadcastPluginSDK.Classes;
-using Command.Classes;
 
 namespace Command.Forms
 {
@@ -35,7 +34,7 @@ namespace Command.Forms
         {
             LogoPictureBox = new PictureBox();
             TitleLabel = new Label();
-            JobListBox = new ListPanel<CommandItem>();
+            JobListBox = new ListPanel<CommandItem>( new CommandRenderer<CommandItem>() );
             jobTypes = new ComboBox();
             ((System.ComponentModel.ISupportInitialize)LogoPictureBox).BeginInit();
             SuspendLayout();

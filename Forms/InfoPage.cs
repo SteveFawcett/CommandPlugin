@@ -1,9 +1,14 @@
-﻿using BroadcastPluginSDK.Classes;
+﻿using BroadcastPluginSDK;
+using BroadcastPluginSDK.Classes;
 using BroadcastPluginSDK.Interfaces;
 using Command.Classes;
 using CommandPlugin.Properties;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Win32;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
+using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 
 namespace Command.Forms 
@@ -13,6 +18,7 @@ namespace Command.Forms
         private readonly ILogger<Command> _logger;
         private readonly IConfiguration _configuration;
         private readonly JobProcessor _processor;
+        private readonly IPluginRegistry? _registry;
 
         public Image Icon
         {
@@ -29,42 +35,43 @@ namespace Command.Forms
             }
         }
 
-        public InfoPage(IConfiguration configuration, ILogger<Command> logger, JobProcessor processor)
+        public InfoPage(IConfiguration configuration, ILogger<Command> logger, JobProcessor processor, IPluginRegistry registry)
         {
             _logger = logger;
             _configuration = configuration;
             _processor = processor;
+            _registry = registry;
 
             InitializeComponent();
 
-            // Some test data
-            JobListBox.AddUpdateItem(new CommandItem { Key = "Sample Job 1", Value = "dir", Status = CommandStatus.Queued });
-            JobListBox.AddUpdateItem(new CommandItem { Key = "Sample Job 2", Value = "dir", Status = CommandStatus.New });
-            JobListBox.AddUpdateItem(new CommandItem { Key = "Sample Job 3", Value = "dir", Status = CommandStatus.New });
-            JobListBox.AddUpdateItem(new CommandItem { Key = "Sample Job 4", Value = "dir", Status = CommandStatus.Completed });
-            JobListBox.AddUpdateItem(new CommandItem { Key = "Sample Job 5", Value = "dir", Status = CommandStatus.Failed });
-            JobListBox.AddUpdateItem(new CommandItem { Key = "Sample Job 6", Value = "dir", Status = CommandStatus.Completed });
+            JobListBox.OnItemSelected += (s, e) =>
+            {
+                var res = new Results();
+                res.SetText = e.Items[0].Result + "Errors\n\n" + e.Items[0].Errors ;
+                res.ShowDialog();
+            };
 
             Icon = Resources.red;
             jobTypes.SelectedIndex = 1;
-        }
 
+            _registry = registry;
+        }
         public Control GetControl()
         {
             return this;
         }
 
-        private bool ShouldHide(CommandItem item)
+        private bool ShouldShow(CommandItem item)
         {
-            bool shouldHide = jobTypes.Text switch
+            bool shouldshow = jobTypes.Text switch
             {
-                "Active" => item.Status == CommandStatus.Completed || item.Status == CommandStatus.Failed,
-                "Failed" => item.Status != CommandStatus.Failed,
-                "Completed" => item.Status != CommandStatus.Completed,
-                _ => false
+                "Active" => item.Status == CommandStatus.InProgress || item.Status == CommandStatus.New || item.Status == CommandStatus.Queued,
+                "Failed" => item.Status == CommandStatus.Failed,
+                "Completed" => item.Status == CommandStatus.Completed,
+                _ => true
             };
 
-            return shouldHide;
+            return shouldshow;
         }
 
         private void ApplyJobFilter()
@@ -75,8 +82,7 @@ namespace Command.Forms
                 return;
             }
 
-            JobListBox.FilterItems( item => !ShouldHide(item) );
-
+            JobListBox.FilterItems( item => ShouldShow(item) );
         }
    
         private void jobTypes_SelectedIndexChanged(object sender, EventArgs e)
@@ -88,5 +94,11 @@ namespace Command.Forms
         {
             ApplyJobFilter();
         }
+
+        internal void AddJob(CommandItem job)
+        {
+            JobListBox.AddUpdateItem(job);
+        }
+
     }
 }
