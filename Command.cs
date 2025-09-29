@@ -11,30 +11,27 @@ using System.Diagnostics.Metrics;
 
 namespace Command
 {
-    public class Command : BroadcastPluginBase 
+    public class Command : BroadcastPluginBase , ICommandHandler
     {
         private const string STANZA = "Command";
         private ILogger<Command>? _logger;
         private readonly IConfiguration? _configuration;
-        private readonly IPluginRegistry? _registry;
         private static InfoPage? _infoPage;
         private readonly static JobProcessor processor = new JobProcessor();
         private static readonly Dictionary<string, string> JobList = new();
         public Command() : base() { }
-        private ICache? Master;
 
         public Command(IConfiguration configuration, ILogger<Command> logger , IPluginRegistry registry) :
             base(configuration, CreateControl(configuration , logger , registry,  processor), Resources.red, STANZA)
         {
             _logger = logger;
-            _registry = registry;
             _configuration = configuration.GetSection(STANZA) ;
-                       
+             
+            _logger?.LogInformation("Command Plugin Starting");
+
             processor.SetPage(_infoPage);
 
             var sampleRate = _configuration.GetValue("SampleRate", 10000.0); 
-
-            StartPeriodicTimerAsync( sampleRate);
 
             foreach( var job in _configuration.GetSection("Jobs").GetChildren() )
             {
@@ -46,93 +43,25 @@ namespace Command
                 }
             }
         }
-
-        private void Command_ImageChangedInvoke(object? sender, Image e)
-        {
-            ImageChangedInvoke( e);
-        }
-
-        public static IInfoPage? CreateControl(IConfiguration configuration, ILogger<Command> logger , IPluginRegistry pluginRegistry, JobProcessor processor)
+        private static IInfoPage? CreateControl(IConfiguration configuration, ILogger<Command> logger , IPluginRegistry pluginRegistry, JobProcessor processor)
         {
             _infoPage = new InfoPage(configuration.GetSection(STANZA), logger , processor , pluginRegistry );
             return _infoPage;
         }
-        private async Task StartPeriodicTimerAsync(double sampleRate)
+        public void CommandHandler(CommandItem cmd)
         {
-            _logger?.LogInformation("Starting Periodic Timer");
+            if( _infoPage != null ) _infoPage?.AddJob(cmd);
 
-            var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(sampleRate));
-            _ = Task.Run(async () =>
+            if( cmd.CommandType != CommandTypes.OperatingSystem )
             {
-                while (await timer.WaitForNextTickAsync())
-                {
-                    if (_registry != null)
-                    {
-                        try
-                        {
-                            Master = _registry.MasterCache();
-                            GetAllJobsInCache();
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger?.LogError(ex, "Error accessing Master Cache from Registry");
-                        }
-                    }
-                }
-            });
-        }
-
-        private void GetAllJobsInCache()
-        {
-            _logger?.LogDebug("Requesting list of Jobs");
-
-            if (Master == null)
-            {
+                _logger?.LogInformation("Only OperatingSystem commands are supported");
                 return;
             }
 
-            processor.SetMaster(Master);
-
-            foreach (CommandStatus status in Enum.GetValues(typeof(CommandStatus)))
+            if (cmd.Status == CommandStatus.Queued)
             {
-                if (status == CommandStatus.Completed || status == CommandStatus.Failed)
-                {
-                    continue; // Skip Completed and Failed jobs
-                }
-
-                // Get all jobs with status New and enqueue them for processing
-                foreach (var job in Master.CommandReader(status))
-                {
-                    if(job == null || string.IsNullOrEmpty(job.Key) || string.IsNullOrEmpty(job.Value))
-                    {
-                        _logger?.LogWarning("Invalid job found in cache, skipping");
-                        continue; // Skip invalid jobs
-                    }
-
-                    if( job.CommandType != CommandTypes.OperatingSystem )
-                    {
-                        _logger?.LogInformation($"Command Type {job.CommandType} not supported by {this} plugin, skipping");
-                        continue; // Skip unsupported command types
-                    }
-
-                    _logger?.LogInformation($"Enqueuing Job {job.Key} for processing, status {job.Status}");
-                    ImageChangedInvoke(Resources.green);
-
-                    if (string.IsNullOrEmpty(job.FullComand))
-                    {
-                        job.FullComand = JobList.TryGetValue(job.Value, out var result) ? result : null;
-                        _logger?.LogInformation($"Found command {job.Value} => {job.FullComand}");
-                    }
-
-                    _infoPage?.AddJob(job);
-
-                    if (job.Status == CommandStatus.New)
-                    {
-                        job.Status = CommandStatus.Queued;
-                        processor.EnqueueJob(job);
-                    }
-                }
-                ImageChangedInvoke(Resources.red);
+                cmd.Status = CommandStatus.InProgress;
+                processor.EnqueueJob(cmd);
             }
         }
     }
