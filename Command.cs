@@ -54,7 +54,7 @@ namespace Command
 
             if( cmd.CommandType != CommandTypes.OperatingSystem )
             {
-                _logger?.LogInformation("Only OperatingSystem commands are supported");
+                _logger?.LogInformation("Only Operating System commands are supported");
                 return;
             }
 
