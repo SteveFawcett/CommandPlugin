@@ -69,12 +69,8 @@
 	  <None Remove=".github\**" />
 	</ItemGroup>
 
-	<ItemGroup Condition="'$(Configuration)' == 'Debug'">
+	<ItemGroup>
 		<ProjectReference Include="..\BroadcastPluginSDK\BroadcastPluginSDK.csproj" />
-	</ItemGroup>
-
-	<ItemGroup Condition="'$(Configuration)' == 'Release'">
-		<PackageReference Include="BroadcastPluginSDK" Version="1.2.0" />
 	</ItemGroup>
 
 	<ItemGroup>

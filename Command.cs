@@ -103,6 +103,18 @@ namespace Command
                 // Get all jobs with status New and enqueue them for processing
                 foreach (var job in Master.CommandReader(status))
                 {
+                    if(job == null || string.IsNullOrEmpty(job.Key) || string.IsNullOrEmpty(job.Value))
+                    {
+                        _logger?.LogWarning("Invalid job found in cache, skipping");
+                        continue; // Skip invalid jobs
+                    }
+
+                    if( job.CommandType != CommandTypes.OperatingSystem )
+                    {
+                        _logger?.LogInformation($"Command Type {job.CommandType} not supported by {this} plugin, skipping");
+                        continue; // Skip unsupported command types
+                    }
+
                     _logger?.LogInformation($"Enqueuing Job {job.Key} for processing, status {job.Status}");
                     ImageChangedInvoke(Resources.green);
 
